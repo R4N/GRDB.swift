@@ -15,9 +15,15 @@ let darwinPlatforms: [Platform] = [
 var swiftSettings: [SwiftSetting] = [
     .define("SQLITE_ENABLE_FTS5"),
     .define("SQLITE_ENABLE_SNAPSHOT"),
+    .define("SQLITE_HAS_CODEC"),
+    .define("SQLCipher")
 ]
-var cSettings: [CSetting] = []
-var dependencies: [PackageDescription.Package.Dependency] = []
+var cSettings: [CSetting] = [
+    .define("SQLITE_HAS_CODEC", to: nil)
+]
+var dependencies: [PackageDescription.Package.Dependency] = [
+    .package(url: "https://github.com/sqlcipher/SQLCipher.swift.git", from: "4.11.0")
+]
 
 // Don't rely on those environment variables. They are ONLY testing conveniences:
 // $ SQLITE_ENABLE_PREUPDATE_HOOK=1 make test_SPM
@@ -56,9 +62,15 @@ let package = Package(
             name: "GRDBSQLite",
             providers: [.apt(["libsqlite3-dev"])]),
         .target(
+            name: "GRDBSQLCipher",
+            dependencies: [.product(name: "SQLCipher", package: "SQLCipher.swift")]
+        ),
+        .target(
             name: "GRDB",
             dependencies: [
                 .target(name: "GRDBSQLite"),
+                .target(name: "GRDBSQLCipher"),
+                .product(name: "SQLCipher", package: "SQLCipher.swift")
             ],
             path: "GRDB",
             resources: [.copy("PrivacyInfo.xcprivacy")],
@@ -85,6 +97,7 @@ let package = Package(
                 .copy("GRDBTests/Betty.jpeg"),
                 .copy("GRDBTests/InflectionsTests.json"),
                 .copy("GRDBTests/Issue1383.sqlite"),
+                .copy("GRDBTests/db.SQLCipher3")
             ],
             cSettings: cSettings,
             swiftSettings: swiftSettings + [
@@ -92,6 +105,7 @@ let package = Package(
                 .swiftLanguageMode(.v5),
                 .enableUpcomingFeature("InferSendableFromCaptures"),
                 .enableUpcomingFeature("GlobalActorIsolatedTypesUsability"),
+                .define("GRDBCIPHER_USE_ENCRYPTION")
             ])
     ],
     swiftLanguageModes: [.v6]
