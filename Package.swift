@@ -15,8 +15,20 @@ let darwinPlatforms: [Platform] = [
 var swiftSettings: [SwiftSetting] = [
     .define("SQLITE_ENABLE_FTS5"),
     .define("SQLITE_ENABLE_SNAPSHOT"),
+    .define("SQLCipher"),
+    .define("SQLITE_HAS_CODEC")
 ]
-var cSettings: [CSetting] = []
+var cSettings: [CSetting] = [
+    .define("NDEBUG", to: nil),
+    .define("SQLCIPHER_CRYPTO_CC", to: nil),
+    .define("SQLITE_HAS_CODEC", to: nil),
+    .define("SQLITE_TEMP_STORE", to: "2"),
+    .define("SQLITE_THREADSAFE", to: "1"),
+    .define("SQLITE_EXTRA_INIT", to: "sqlcipher_extra_init"),
+    .define("SQLITE_EXTRA_SHUTDOWN", to: "sqlcipher_extra_shutdown"),
+    .define("SQLITE_ENABLE_FTS5", to: nil),
+    .define("SQLITE_ENABLE_SNAPSHOT", to: nil)
+]
 var dependencies: [PackageDescription.Package.Dependency] = []
 
 // Don't rely on those environment variables. They are ONLY testing conveniences:
@@ -58,12 +70,22 @@ let package = Package(
         .target(
             name: "GRDB",
             dependencies: [
-                .target(name: "GRDBSQLite"),
+                .target(name: "SQLCipher"),
+                .target(name: "GRDBSQLCipher")
             ],
             path: "GRDB",
             resources: [.copy("PrivacyInfo.xcprivacy")],
             cSettings: cSettings,
             swiftSettings: swiftSettings),
+        .target(
+            name: "SQLCipher",
+            publicHeadersPath: "include",
+            cSettings: cSettings
+        ),
+        .target(
+            name: "GRDBSQLCipher",
+            dependencies: [.target(name: "SQLCipher")]
+        ),
         .testTarget(
             name: "GRDBTests",
             dependencies: ["GRDB"],
