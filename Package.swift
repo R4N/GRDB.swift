@@ -71,7 +71,6 @@ let package = Package(
             name: "GRDB",
             dependencies: [
                 .target(name: "SQLCipher"),
-                .target(name: "GRDBSQLCipher")
             ],
             path: "GRDB",
             resources: [.copy("PrivacyInfo.xcprivacy")],
@@ -81,10 +80,6 @@ let package = Package(
             name: "SQLCipher",
             publicHeadersPath: "include",
             cSettings: cSettings
-        ),
-        .target(
-            name: "GRDBSQLCipher",
-            dependencies: [.target(name: "SQLCipher")]
         ),
         .testTarget(
             name: "GRDBTests",

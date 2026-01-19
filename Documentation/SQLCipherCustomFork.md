@@ -1,7 +1,7 @@
 Custom SQLCipher Fork
 =====================
 
-The officially supported fork of GRDB w/SQLCipher is available here: <url to fork>
+The officially supported fork of GRDB w/SQLCipher is available here: `<url to fork>`
 This fork is maintained by GRDB in collaboration with the SQLCipher team and is the recommended fork to use to enable SQLCipher encryption for GRDB.
 
 If you have requirements that the official fork doesn't support, you're can fork GRDB yourself and include a custom copy of SQLCipher. This guide provides instructions for what is minimally required to get up and running with your fork:
@@ -20,53 +20,15 @@ SQLCipher
     ├── include
     │   ├── module.modulemap
     │   ├── SQLCipher
+    │   │   ├── grdb_config.h
     │   │   └── sqlite3.h
     │   └── SQLCipher.h
     └── sqlite3.c
 ```
 
-Add a `module.modulemap` file in the `include` directory with these contents
+Add a `grdb_config.h` file in the `include/SQLCipher` directory with these contents
 
 ```swift
-module SQLCipher {
-    umbrella header "SQLCipher.h"
-    export *
-}
-```
-
-Add a `SQLCipher.h` umbrella header file in the `include` directory with these contents
-
-```objc
-#ifndef SQLCipher_h
-#define SQLCipher_h
-
-#import <SQLCipher/sqlite3.h>
-#endif /* SQLCipher_h */
-```
-
-5. Create a new `GRDBSQLCipher` directory in the `Sources` directory with this structure
-
-```sh
-GRDBSQLCipher
-│   ├── include
-│   │   ├── module.modulemap
-│   │   └── SQLCipher_config.h
-│   └── SQLCipher_config.c
-```
-
-Add a `module.modulemap` file in the `include` directory with these contents
-
-
-```swift
-module GRDBSQLCipher {
-    header "SQLCipher_config.h"
-    export *
-}
-```
-
-Add a `SQLCipher_config.h` file in the `include` directory with these contents
-
-```objc
 #ifndef grdb_config_h
 #define grdb_config_h
 
@@ -96,14 +58,33 @@ static inline void _enableDoubleQuotedStringLiterals(sqlite3 *db) {
 #endif /* grdb_config_h */
 ```
 
-6. Modify the `Package.swift` to include the two new targets and add them as depdencies for GRDB
+Add a `module.modulemap` file in the `include` directory with these contents
+
+```swift
+module SQLCipher {
+    umbrella header "SQLCipher.h"
+    export *
+}
+```
+
+Add a `SQLCipher.h` umbrella header file in the `include` directory with these contents
+
+```objc
+#ifndef SQLCipher_h
+#define SQLCipher_h
+
+#import <SQLCipher/sqlite3.h>
+#import <SQLCipher/grdb_config.h>
+#endif /* SQLCipher_h */
+```
+
+6. Modify the `Package.swift` to include the new SQLCipher target and add it as a depdency for GRDB
 
 ```swift
         .target(
             name: "GRDB",
             dependencies: [
                 .target(name: "SQLCipher"),
-                .target(name: "GRDBSQLCipher")
             ],
             path: "GRDB",
             resources: [.copy("PrivacyInfo.xcprivacy")],
@@ -113,10 +94,6 @@ static inline void _enableDoubleQuotedStringLiterals(sqlite3 *db) {
             name: "SQLCipher",
             publicHeadersPath: "include",
             cSettings: cSettings
-        ),
-        .target(
-            name: "GRDBSQLCipher",
-            dependencies: [.target(name: "SQLCipher")]
         ),
 ```
 
