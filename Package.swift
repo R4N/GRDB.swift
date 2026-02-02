@@ -84,8 +84,6 @@ let package = Package(
         .target(
             name: "GRDB",
             dependencies: [
-                // GRDB+SQLCipher: Delete the GRDBSQLite dependency
-                // .target(name: "GRDBSQLite"),
                 // GRDB+SQLCipher: Uncomment the SQLCipher and GRDBSQLCipher dependencies
                 .target(name: "SQLCipher"),
                 .target(name: "GRDBSQLCipher"),

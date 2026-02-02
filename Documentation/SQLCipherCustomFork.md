@@ -17,45 +17,12 @@ git clone <url to fork>
 
 ```sh
 SQLCipher
-    ├── include
-    │   ├── module.modulemap
-    │   ├── SQLCipher
-    │   │   ├── grdb_config.h
-    │   │   └── sqlite3.h
-    │   └── SQLCipher.h
-    └── sqlite3.c
-```
-
-Add a `grdb_config.h` file in the `include/SQLCipher` directory with these contents
-
-```swift
-#ifndef grdb_config_h
-#define grdb_config_h
-
-#import <SQLCipher/sqlite3.h>
-
-typedef void(*_errorLogCallback)(void *pArg, int iErrCode, const char *zMsg);
-
-/// Wrapper around sqlite3_config(SQLITE_CONFIG_LOG, ...) which is a variadic
-/// function that can't be used from Swift.
-static inline void _registerErrorLogCallback(_errorLogCallback callback) {
-    sqlite3_config(SQLITE_CONFIG_LOG, callback, 0);
-}
-
-/// Wrapper around sqlite3_db_config() which is a variadic function that can't
-/// be used from Swift.
-static inline void _disableDoubleQuotedStringLiterals(sqlite3 *db) {
-    sqlite3_db_config(db, SQLITE_DBCONFIG_DQS_DDL, 0, (void *)0);
-    sqlite3_db_config(db, SQLITE_DBCONFIG_DQS_DML, 0, (void *)0);
-}
-
-/// Wrapper around sqlite3_db_config() which is a variadic function that can't
-/// be used from Swift.
-static inline void _enableDoubleQuotedStringLiterals(sqlite3 *db) {
-    sqlite3_db_config(db, SQLITE_DBCONFIG_DQS_DDL, 1, (void *)0);
-    sqlite3_db_config(db, SQLITE_DBCONFIG_DQS_DML, 1, (void *)0);
-}
-#endif /* grdb_config_h */
+├── include
+│   ├── module.modulemap
+│   ├── SQLCipher
+│   │   └── sqlite3.h
+│   └── SQLCipher.h
+└── sqlite3.c
 ```
 
 Add a `module.modulemap` file in the `include` directory with these contents
@@ -74,7 +41,6 @@ Add a `SQLCipher.h` umbrella header file in the `include` directory with these c
 #define SQLCipher_h
 
 #import <SQLCipher/sqlite3.h>
-#import <SQLCipher/grdb_config.h>
 #endif /* SQLCipher_h */
 ```
 
@@ -84,7 +50,9 @@ Add a `SQLCipher.h` umbrella header file in the `include` directory with these c
         .target(
             name: "GRDB",
             dependencies: [
+                // GRDB+SQLCipher: Uncomment the SQLCipher and GRDBSQLCipher dependencies
                 .target(name: "SQLCipher"),
+                .target(name: "GRDBSQLCipher"),
             ],
             path: "GRDB",
             resources: [.copy("PrivacyInfo.xcprivacy")],
@@ -100,16 +68,12 @@ Add a `SQLCipher.h` umbrella header file in the `include` directory with these c
 7. Add these swiftSettings and cSettings to `Package.swift` (and whatever other flags desired)
 
 ```swift
-var swiftSettings: [SwiftSetting] = [
-    .define("SQLITE_ENABLE_FTS5"),
-    .define("SQLITE_ENABLE_SNAPSHOT"),
-    .define("SQLCipher"), // added
-    .define("SQLITE_HAS_CODEC") // added
-]
+swiftSettings.append(.define("SQLITE_HAS_CODEC"))
+swiftSettings.append(.define("SQLCipher"))
 ```
 
 ```swift
-var cSettings: [CSetting] = [
+cSettings.append(contentsOf: [
     .define("NDEBUG", to: nil),
     .define("SQLCIPHER_CRYPTO_CC", to: nil),
     .define("SQLITE_HAS_CODEC", to: nil),
@@ -119,6 +83,6 @@ var cSettings: [CSetting] = [
     .define("SQLITE_EXTRA_SHUTDOWN", to: "sqlcipher_extra_shutdown"),
     .define("SQLITE_ENABLE_FTS5", to: nil),
     .define("SQLITE_ENABLE_SNAPSHOT", to: nil)
-]
+])
 ```
 
