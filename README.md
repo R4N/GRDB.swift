@@ -100,7 +100,7 @@ try dbQueue.write { db in
 }
 
 try dbQueue.read { db in
-    let player = try Player.find(db, id: "1"))
+    let player = try Player.find(db, id: "1")
     
     let bestPlayers = try Player
         .order(\.score.desc)
@@ -4589,7 +4589,9 @@ Encryption
 
 **GRDB can encrypt your database with [SQLCipher](http://sqlcipher.net) v3.4+.**
 
-Use [CocoaPods](http://cocoapods.org/), and specify in your `Podfile`:
+To use SQLCipher with the [Swift Package Manager](https://swift.org/package-manager/), you must fork GRDB, and modify `Package.swift`. Instructions are in the file itself, in comments that contain "GRDB+SQLCipher".
+
+To use SQLCipher with [CocoaPods](http://cocoapods.org/), specify in your `Podfile`:
 
 ```ruby
 # GRDB with SQLCipher 4

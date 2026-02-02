@@ -1,25 +1,64 @@
 #if SQLITE_HAS_CODEC
+#if GRDBCIPHER // CocoaPods (SQLCipher subspec)
 import SQLCipher
+#elseif SQLCipher
+import SQLCipher
+#else
+#error("No SQLCipher library configured")
+#endif
 import Foundation
 
 extension Database {
     
-    /// Granularitly of SQLCipher log outputs
-    /// Each log level is more verbose than the last
+    /// Destination of SQLCipher logs.
     ///
-    /// See https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_log_level
-    public enum CipherLogLevel: String {
-        case none
-        case error
-        case warn
-        case info
-        case debug
-        case trace
+    /// See <https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_log>
+    public struct SQLCipherLogTarget: Sendable {
+        public var rawValue: String
+        public init(rawValue: String) {
+            self.rawValue = rawValue
+        }
+        
+        public static let stdout = Self(rawValue: "stdout")
+        public static let stderr = Self(rawValue: "stderr")
+        public static let device = Self(rawValue: "device")
+        public static func file(_ path: String) -> Self { Self(rawValue: path) }
+    }
+    
+    /// Granularitly of SQLCipher log outputs.
+    ///
+    /// Each log level is more verbose than the last. With ``debug`` and
+    /// ``trace`` the logging system will generate a significant log volume.
+    ///
+    /// See <https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_log_level>
+    ///
+    /// ## Topics
+    ///
+    /// ### Log Levels
+    ///
+    /// - ``none``
+    /// - ``error``
+    /// - ``warn``
+    /// - ``info``
+    /// - ``debug``
+    /// - ``trace``
+    public struct SQLCipherLogLevel: RawRepresentable, Sendable {
+        public var rawValue: String
+        public init(rawValue: String) {
+            self.rawValue = rawValue
+        }
+        
+        public static let none = Self(rawValue: "NONE")
+        public static let error = Self(rawValue: "ERROR")
+        public static let warn = Self(rawValue: "WARN")
+        public static let info = Self(rawValue: "INFO")
+        public static let debug = Self(rawValue: "DEBUG")
+        public static let trace = Self(rawValue: "TRACE")
     }
     
     /// - Returns: the SQLCipher version
     ///
-    /// See https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_version
+    /// See <https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_version>
     public var cipherVersion: String {
         get throws { try String.fetchOne(self, sql: "PRAGMA cipher_version")! }
     }
@@ -27,7 +66,7 @@ extension Database {
     /// - Returns: the SQLCipher fips status: 1 for fips mode, 0 for non-fips mode
     /// The FIPS status will not be initialized until the database connection has been keyed
     ///
-    /// See https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_fips_status
+    /// See <https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_fips_status>
     public var cipherFipsStatus: String? {
         get throws { try String.fetchOne(self, sql: "PRAGMA cipher_fips_status") }
     }
@@ -35,7 +74,7 @@ extension Database {
     /// - Returns: The compiled crypto provider.
     /// The database must be keyed before requesting the name of the crypto provider.
     ///
-    /// See https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_provider
+    /// See <https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_provider>
     public var cipherProvider: String? {
         get throws { try String.fetchOne(self, sql: "PRAGMA cipher_provider") }
     }
@@ -43,7 +82,7 @@ extension Database {
     /// - Returns: the version number provided from the compiled crypto provider.
     /// This value, if known, is available only after the database has been keyed.
     ///
-    /// See https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_provider_version
+    /// See <https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_provider_version>
     public var cipherProviderVersion: String? {
         get throws { try String.fetchOne(self, sql: "PRAGMA cipher_provider_version") }
     }
@@ -121,43 +160,49 @@ extension Database {
     /// Failure to provide a license code, or use of an expired trial code,
     /// will result in an `SQLITE_AUTH (23)` error code reported from the SQLite API
     /// License Codes will activate SQLCipher Commercial or Enterprise packages
-    /// from Zetetic: https://www.zetetic.net/sqlcipher/buy/
-    /// 15-day free trials are available by request: https://www.zetetic.net/sqlcipher/trial/
+    /// from Zetetic: <https://www.zetetic.net/sqlcipher/buy/>
+    /// 15-day free trials are available by request: <https://www.zetetic.net/sqlcipher/trial/>
     ///
-    /// Call this method from `Configuration.prepareDatabase`,
+    /// Call this method from ``Configuration/prepareDatabase(_:)``,
     /// as in the example below:
     ///
-    ///     var config = Configuration()
-    ///     config.prepareDatabase { db in
-    ///         try db.applyLicense(license)
-    ///     }
+    /// ```swift
+    /// var config = Configuration()
+    /// config.prepareDatabase { db in
+    ///     try db.applySQLCipherLicense(license)
+    /// }
+    /// ```
     ///
-    /// See https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_license
+    /// See <https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_license>
     /// - Parameter license: base64 SQLCipher license code to activate SQLCipher commercial
-    public func applyLicense(_ license: String) throws {
+    public func applySQLCipherLicense(_ license: String) throws {
         try execute(sql: "PRAGMA cipher_license = '\(license)'")
     }
     
-    /// Instructs SQLCipher to log internal debugging and operational information
-    /// to the sepecified log target (device) using `os_log`
-    /// The supplied logLevel will determine the granularity of the logs output
-    /// Available logLevel options are: NONE, ERROR, WARN, INFO, DEBUG, TRACE
-    /// Note that each level is more verbose than the last,
-    /// and particularly with DEBUG and TRACE the logging system will generate
-    /// a significant log volume
+    /// Instructs SQLCipher to log internal debugging and operational information.
     ///
-    /// See https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_log
-    /// - Parameter logLevel: CipherLogLevel The granularity to use for the logging system - defaults to `DEBUG`
-    public func enableCipherLogging(logLevel: CipherLogLevel = .debug) throws {
-        try execute(sql: "PRAGMA cipher_log = device")
-        try execute(sql: "PRAGMA cipher_log_level = \(logLevel.rawValue.uppercased())")
+    /// The supplied ``logLevel`` determines the granularity of the logs output.
+    ///
+    /// See <https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_log>
+    /// - Parameter logLevel: The granularity to use for the logging system - defaults to `DEBUG`.
+    /// - Parameter target: The destination of SQLCipher logs - defaults to `.device`.
+    public func enableCipherLogging(
+        logLevel: SQLCipherLogLevel = .debug,
+        target: SQLCipherLogTarget = .device
+    ) throws {
+        // Pragma do not support SQL arguments. We need to generate SQL that contains literal values:
+        // PRAGMA cipher_log = '/path/to/file'
+        // PRAGMA cipher_log_level = 'xxx'
+        let context = SQLGenerationContext(self, argumentsSink: .literalValues)
+        try execute(sql: SQL("PRAGMA cipher_log = \(target.rawValue)").sql(context))
+        try execute(sql: SQL("PRAGMA cipher_log_level = \(logLevel.rawValue.uppercased())").sql(context))
     }
     
-    /// Instructs SQLCipher to disable logging internal debugging and operational information
+    /// Instructs SQLCipher to disable logging internal debugging and operational information.
     ///
-    /// See https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_log
+    /// See <https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_log>
     public func disableCipherLogging() throws {
-        try execute(sql: "PRAGMA cipher_log_level = \(CipherLogLevel.none.rawValue.uppercased())")
+        try execute(sql: "PRAGMA cipher_log_level = NONE")
     }
     
     internal func validateSQLCipher() throws {
